@@ -1,0 +1,34 @@
+﻿<Window x:Class="BookingMsmqClient.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:BookingMsmqClient"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="365.72" Width="810.488">
+    <Grid>
+        <Canvas x:Name="canvas" HorizontalAlignment="Left" Height="300" Margin="10,16,0,0" VerticalAlignment="Top" Width="400" Background="Black"/>
+        <Grid HorizontalAlignment="Stretch" Height="190" Margin="280,79,32,50" Width="205">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" MinWidth="59"/>
+                <ColumnDefinition Width="Auto" MinWidth="146"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="30"></RowDefinition>
+                <RowDefinition Height="25"></RowDefinition>
+                <RowDefinition Height="Auto"></RowDefinition>
+                <RowDefinition Height="25"></RowDefinition>
+                <RowDefinition Height="Auto"></RowDefinition>
+                <RowDefinition Height="50"></RowDefinition>
+            </Grid.RowDefinitions>
+            <Label x:Name="label1" Content="Order Id:" Width="59" HorizontalAlignment="Left" Grid.Column="0" Grid.Row="0"/>
+            <Label x:Name="lbGuid" Content="" Margin="0,0,0,162" Grid.Column="1" Grid.Row="0"/>
+            <Label x:Name="label2" Content="Enter Name:" Grid.Row="1"></Label>
+            <TextBox x:Name="tbName" Grid.Column="0" Grid.Row="2" Grid.ColumnSpan="2" Margin="0,0,41,0"></TextBox>
+            <Label x:Name="label3" Content="Enter Surname:" Grid.Row="3"></Label>
+            <TextBox x:Name="tbSurname" Grid.Column="0" Grid.Row="4" Grid.ColumnSpan="2" Margin="0,0,41,0"></TextBox>
+            <Button x:Name="btSubmit" Content="Submit" Grid.Row="5" Margin="45,10,41,20" Grid.Column="1"></Button>
+        </Grid>
+
+    </Grid>
+</Window>

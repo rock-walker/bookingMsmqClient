@@ -1,0 +1,14 @@
+D:\Study\studing C#\Mentee\BookingMsmqClient\BookingMsmqClient\bin\Debug\BookingMsmqClient.exe.config
+D:\Study\studing C#\Mentee\BookingMsmqClient\BookingMsmqClient\bin\Debug\BookingMsmqClient.exe
+D:\Study\studing C#\Mentee\BookingMsmqClient\BookingMsmqClient\bin\Debug\BookingMsmqClient.pdb
+D:\Study\studing C#\Mentee\BookingMsmqClient\BookingMsmqClient\obj\Debug\BookingMsmqClient.csprojResolveAssemblyReference.cache
+D:\Study\studing C#\Mentee\BookingMsmqClient\BookingMsmqClient\obj\Debug\MainWindow.g.cs
+D:\Study\studing C#\Mentee\BookingMsmqClient\BookingMsmqClient\obj\Debug\App.g.cs
+D:\Study\studing C#\Mentee\BookingMsmqClient\BookingMsmqClient\obj\Debug\BookingMsmqClient_MarkupCompile.cache
+D:\Study\studing C#\Mentee\BookingMsmqClient\BookingMsmqClient\obj\Debug\BookingMsmqClient_MarkupCompile.lref
+D:\Study\studing C#\Mentee\BookingMsmqClient\BookingMsmqClient\obj\Debug\MainWindow.baml
+D:\Study\studing C#\Mentee\BookingMsmqClient\BookingMsmqClient\obj\Debug\BookingMsmqClient.g.resources
+D:\Study\studing C#\Mentee\BookingMsmqClient\BookingMsmqClient\obj\Debug\BookingMsmqClient.Properties.Resources.resources
+D:\Study\studing C#\Mentee\BookingMsmqClient\BookingMsmqClient\obj\Debug\BookingMsmqClient.csproj.GenerateResource.Cache
+D:\Study\studing C#\Mentee\BookingMsmqClient\BookingMsmqClient\obj\Debug\BookingMsmqClient.exe
+D:\Study\studing C#\Mentee\BookingMsmqClient\BookingMsmqClient\obj\Debug\BookingMsmqClient.pdb
