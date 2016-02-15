@@ -19,6 +19,7 @@ namespace BookingMsmqClient
     {
         private Seat[,] _room = new Seat[30,40];
         private readonly string _queueName = ".\\Private$\\SeatsRoom";
+        private List<LabelIdMapping> _seats = new List<LabelIdMapping>();
 
         public MainWindow()
         {
@@ -29,31 +30,34 @@ namespace BookingMsmqClient
 
         private void BL_InitSeats()
         {
-            if (MessageQueue.Exists(_queueName))
+            var queue = new MessageQueue(_queueName){
+                Formatter = new XmlMessageFormatter(new[] { typeof(Seat) })
+            };
+
+            if (!MessageQueue.Exists(_queueName))
             {
-                using (var queue = MessageQueue.Create(_queueName))
+                using (queue = MessageQueue.Create(_queueName))
                 {
                     queue.Label = "CinemaSeats";
                 }
             }
-            else
-            {
-                var queue = new MessageQueue(_queueName)
-                {
-                    Formatter = new XmlMessageFormatter(new [] {typeof(Seat)})
-                };
-
-                Task.Factory.StartNew(() => PeekMessages(queue))
+            
+            Task.Factory.StartNew(() => PeekMessages(queue))
                     .ContinueWith(x =>
                     {
                         var enumerable = x.Result;
-                        var seats = enumerable as IList<Seat> ?? enumerable.ToList();
+                        var seats = enumerable as IList<LabelIdMapping> ?? enumerable.ToList();
 
                         for (var i = 0; i < 30; i++)
                         {
                             for (var j = 0; j < 40; j++)
                             {
-                                var bookedSeat = seats.FirstOrDefault(n => n.Number == j && n.Row == i);
+                                var message = queue.PeekById(seats[i].Id);
+                                var bookedSeat = message.Body as Seat;
+
+                                if (bookedSeat == null)
+                                    return;
+                                //var bookedSeat = seats.FirstOrDefault(n => n.Number == j && n.Row == i);
 
                                 //TODO: change to dynamic BookingState
                                 bookedSeat.ViewModel = DrawSeat(BookingState.Free);
@@ -65,12 +69,10 @@ namespace BookingMsmqClient
                             }
                         }
                     });
-            }
         }
 
-        private IEnumerable<Seat> PeekMessages(MessageQueue queue)
+        private IEnumerable<LabelIdMapping> PeekMessages(MessageQueue queue)
         {
-            var seats = new List<Seat>();
             using (var msgEnumerator = queue.GetMessageEnumerator2())
             {
                 while (msgEnumerator.MoveNext(TimeSpan.FromMinutes(1)) && msgEnumerator.Current != null)
@@ -81,18 +83,16 @@ namespace BookingMsmqClient
                         Label = msgEnumerator.Current.Label
                     };
 
-                    var seat = (Seat) msgEnumerator.Current.Body;
-                    seats.Add(seat);
-
-                    Dispatcher.Invoke(x => )
+                    Dispatcher.Invoke(new Action<LabelIdMapping>(AddSeatToRoom), labelId);
                 }
             }
-            return seats;
+            return _seats;
         }
 
-        Action<LabelIdMapping> AddSeatToRoom = (x => 
-            
-        )
+        private void AddSeatToRoom(LabelIdMapping labelIdMapping)
+        {
+            _seats.Add(labelIdMapping);
+        }
 
         private Rectangle DrawSeat(BookingState state)
         {
