@@ -20,6 +20,7 @@ namespace BookingMsmqClient
         private Seat[,] _room = new Seat[30,40];
         private readonly string _queueName = ".\\Private$\\SeatsRoom";
         private List<LabelIdMapping> _seats = new List<LabelIdMapping>();
+        private List<Seat> _selectedSeats = new List<Seat>(); 
 
         public MainWindow()
         {
@@ -86,6 +87,11 @@ namespace BookingMsmqClient
                     canvas.Children.Add(uiSeat);
                     Canvas.SetTop(uiSeat, i * 10);
                     Canvas.SetLeft(uiSeat, j * 10);
+
+                    _room[i, j] = new Seat
+                    {
+                        ViewModel = uiSeat
+                    };
                 }
             }
         }
@@ -155,7 +161,33 @@ namespace BookingMsmqClient
 
             MessageBox.Show($"Place [r {row}, s {number}] is reserved" + Environment.NewLine + "Submit personal data");
 
+            var checkedRoom = _room[row, number];
+            if (checkedRoom.BookingState != BookingState.AwaitingApproval &&
+                checkedRoom.BookingState != BookingState.Reserved)
+            {
+                _selectedSeats.Add(checkedRoom);
+                checkedRoom.BookingState = BookingState.AwaitingApproval;
+                checkedRoom.ViewModel.Fill = UpdateState(checkedRoom.BookingState);
+            }
+        }
 
+        private SolidColorBrush UpdateState(BookingState state)
+        {
+            var actualColor = new SolidColorBrush(Colors.White);
+            switch (state)
+            {
+                case BookingState.Reserved:
+                    actualColor.Color = Colors.DarkRed;
+                    break;
+                case BookingState.AwaitingApproval:
+                    actualColor.Color = Colors.DeepPink;
+                    break;
+                default:
+                    actualColor.Color = Colors.White;
+                    break;
+            }
+
+            return actualColor;
         }
 
         private void btSubmit_Click(object sender, RoutedEventArgs e)
