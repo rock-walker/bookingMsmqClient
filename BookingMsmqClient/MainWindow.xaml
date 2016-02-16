@@ -27,7 +27,7 @@
             <TextBox x:Name="tbName" Grid.Column="0" Grid.Row="2" Grid.ColumnSpan="2" Margin="0,0,41,0"></TextBox>
             <Label x:Name="label3" Content="Enter Surname:" Grid.Row="3"></Label>
             <TextBox x:Name="tbSurname" Grid.Column="0" Grid.Row="4" Grid.ColumnSpan="2" Margin="0,0,41,0"></TextBox>
-            <Button x:Name="btSubmit" Content="Submit" Grid.Row="5" Margin="45,10,41,20" Grid.Column="1"></Button>
+            <Button x:Name="btSubmit" Content="Submit" Grid.Row="5" Margin="45,10,41,20" Grid.Column="1" Click="btSubmit_Click"></Button>
         </Grid>
 
     </Grid>

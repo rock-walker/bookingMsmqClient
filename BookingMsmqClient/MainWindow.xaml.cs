@@ -25,6 +25,8 @@ namespace BookingMsmqClient
         {
             InitializeComponent();
 
+            UI_InitSeats();
+
             BL_InitSeats();
         }
 
@@ -43,39 +45,56 @@ namespace BookingMsmqClient
             }
             
             Task.Factory.StartNew(() => PeekMessages(queue))
-                    .ContinueWith(x =>
+                .ContinueWith(x =>
+                {
+                    var enumerable = x.Result;
+                    var seats = enumerable as IList<LabelIdMapping> ?? enumerable.ToList();
+
+                    if (seats.Count == 0)
+                        return;
+
+                    for (var i = 0; i < 30; i++)
                     {
-                        var enumerable = x.Result;
-                        var seats = enumerable as IList<LabelIdMapping> ?? enumerable.ToList();
-
-                        for (var i = 0; i < 30; i++)
+                        for (var j = 0; j < 40; j++)
                         {
-                            for (var j = 0; j < 40; j++)
-                            {
-                                var message = queue.PeekById(seats[i].Id);
-                                var bookedSeat = message.Body as Seat;
+                            var message = queue.PeekById(seats[i].Id);
+                            var bookedSeat = message.Body as Seat;
 
-                                if (bookedSeat == null)
-                                    return;
-                                //var bookedSeat = seats.FirstOrDefault(n => n.Number == j && n.Row == i);
+                            if (bookedSeat == null)
+                                return;
+                            //var bookedSeat = seats.FirstOrDefault(n => n.Number == j && n.Row == i);
 
-                                //TODO: change to dynamic BookingState
-                                bookedSeat.ViewModel = DrawSeat(BookingState.Free);
-                                canvas.Children.Add(bookedSeat.ViewModel);
-                                Canvas.SetTop(bookedSeat.ViewModel, i*10);
-                                Canvas.SetLeft(bookedSeat.ViewModel, j*10);
+                            //TODO: change to dynamic BookingState
+                            bookedSeat.ViewModel = DrawSeat(BookingState.Free);
+                            canvas.Children.Add(bookedSeat.ViewModel);
+                            Canvas.SetTop(bookedSeat.ViewModel, i*10);
+                            Canvas.SetLeft(bookedSeat.ViewModel, j*10);
 
-                                _room[i, j] = bookedSeat;
-                            }
+                            _room[i, j] = bookedSeat;
                         }
-                    });
+                    }
+                });
+        }
+
+        private void UI_InitSeats()
+        {
+            for (var i = 0; i < 30; i++)
+            {
+                for (var j = 0; j < 40; j++)
+                {
+                    var uiSeat = DrawSeat(BookingState.Free);
+                    canvas.Children.Add(uiSeat);
+                    Canvas.SetTop(uiSeat, i * 10);
+                    Canvas.SetLeft(uiSeat, j * 10);
+                }
+            }
         }
 
         private IEnumerable<LabelIdMapping> PeekMessages(MessageQueue queue)
         {
             using (var msgEnumerator = queue.GetMessageEnumerator2())
             {
-                while (msgEnumerator.MoveNext(TimeSpan.FromMinutes(1)) && msgEnumerator.Current != null)
+                while (msgEnumerator.MoveNext(TimeSpan.FromSeconds(1)) && msgEnumerator.Current != null)
                 {
                     var labelId = new LabelIdMapping
                     {
@@ -129,7 +148,27 @@ namespace BookingMsmqClient
 
         private void DetectSeat(object sender, MouseButtonEventArgs args)
         {
-            
+            var seat = (Rectangle) sender;
+            var index = canvas.Children.IndexOf(seat);
+            var number = index % 40;
+            var row = index / 40;
+
+            MessageBox.Show($"Place [r {row}, s {number}] is reserved" + Environment.NewLine + "Submit personal data");
+
+
+        }
+
+        private void btSubmit_Click(object sender, RoutedEventArgs e)
+        {
+            var queue = new MessageQueue(_queueName);
+
+            var customer = new Customer
+            {
+                Name = tbName.Text,
+                Surname = tbSurname.Text
+            };
+
+            queue.Send(customer);
         }
     }
 }

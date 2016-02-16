@@ -7,7 +7,6 @@ using System.Windows.Shapes;
 
 namespace BookingMsmqClient.Models
 {
-    [Serializable]
     class Seat
     {
         public int Number { get; set; }
