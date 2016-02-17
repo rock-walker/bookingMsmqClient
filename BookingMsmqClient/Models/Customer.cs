@@ -2,8 +2,7 @@
 
 namespace BookingMsmqClient.Models
 {
-    [Serializable]
-    class Customer
+    public class Customer
     {
         public Guid OrderId { get; set; }
         public string Name { get; set; }

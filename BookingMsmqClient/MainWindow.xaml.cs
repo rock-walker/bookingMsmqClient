@@ -200,7 +200,23 @@ namespace BookingMsmqClient
                 Surname = tbSurname.Text
             };
 
-            queue.Send(customer);
+            var seatInfo = _selectedSeats.FirstOrDefault();
+
+            if (seatInfo == null)
+            {
+                MessageBox.Show("reserve the seat");
+                return;
+            }
+
+            var seat = new Seat
+            {
+                BookingState = seatInfo.BookingState,
+                Data = customer,
+                Number = seatInfo.Number,
+                Row = seatInfo.Row
+            };
+
+            queue.Send(seat);
         }
     }
 }
