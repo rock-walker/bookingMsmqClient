@@ -26,7 +26,7 @@ namespace BookingMsmqClient
         {
             InitializeComponent();
 
-            UI_InitSeats();
+            //UI_InitSeats();
 
             BL_InitSeats();
         }
@@ -52,21 +52,22 @@ namespace BookingMsmqClient
                     var seats = enumerable as IList<LabelIdMapping> ?? enumerable.ToList();
 
                     if (seats.Count == 0)
+                    {
+                        UI_InitSeats();
                         return;
+                    }
+
+                    //deserialize messsages
+                    var messages = seats.Select(labelIdMapping => queue.PeekById(labelIdMapping.Id).Body as Seat).ToList();
 
                     for (var i = 0; i < 30; i++)
                     {
                         for (var j = 0; j < 40; j++)
                         {
-                            var message = queue.PeekById(seats[i].Id);
-                            var bookedSeat = message.Body as Seat;
-
-                            if (bookedSeat == null)
-                                return;
-                            //var bookedSeat = seats.FirstOrDefault(n => n.Number == j && n.Row == i);
+                            var bookedSeat = messages.FirstOrDefault(n => n.Number == j && n.Row == i) ?? new Seat();
 
                             //TODO: change to dynamic BookingState
-                            bookedSeat.ViewModel = DrawSeat(BookingState.Free);
+                            bookedSeat.ViewModel = DrawSeat(bookedSeat.BookingState);
                             canvas.Children.Add(bookedSeat.ViewModel);
                             Canvas.SetTop(bookedSeat.ViewModel, i*10);
                             Canvas.SetLeft(bookedSeat.ViewModel, j*10);
@@ -74,7 +75,7 @@ namespace BookingMsmqClient
                             _room[i, j] = bookedSeat;
                         }
                     }
-                });
+                }, TaskScheduler.FromCurrentSynchronizationContext());
         }
 
         private void UI_InitSeats()
@@ -165,7 +166,10 @@ namespace BookingMsmqClient
             if (checkedRoom.BookingState != BookingState.AwaitingApproval &&
                 checkedRoom.BookingState != BookingState.Reserved)
             {
+                checkedRoom.Number = number;
+                checkedRoom.Row = row;
                 _selectedSeats.Add(checkedRoom);
+
                 checkedRoom.BookingState = BookingState.AwaitingApproval;
                 checkedRoom.ViewModel.Fill = UpdateState(checkedRoom.BookingState);
             }
@@ -200,23 +204,25 @@ namespace BookingMsmqClient
                 Surname = tbSurname.Text
             };
 
-            var seatInfo = _selectedSeats.FirstOrDefault();
-
-            if (seatInfo == null)
+            if (!_selectedSeats.Any())
             {
                 MessageBox.Show("reserve the seat");
                 return;
             }
 
-            var seat = new Seat
+            foreach (var selectedSeat in _selectedSeats)
             {
-                BookingState = seatInfo.BookingState,
-                Data = customer,
-                Number = seatInfo.Number,
-                Row = seatInfo.Row
-            };
+                var seat = new Seat
+                {
+                    BookingState = selectedSeat.BookingState,
+                    Data = customer,
+                    Number = selectedSeat.Number,
+                    Row = selectedSeat.Row
+                };
+                queue.Send(seat);
+            }
 
-            queue.Send(seat);
+            _selectedSeats.Clear();
         }
     }
 }
