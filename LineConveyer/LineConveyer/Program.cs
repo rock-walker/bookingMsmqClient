@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Messaging;
+using BookingMsmqClient.Models;
 
 namespace BookingMsmqClient
 {
@@ -22,7 +23,8 @@ namespace BookingMsmqClient
                 while (enumerator.MoveNext(TimeSpan.FromMilliseconds(10000)) && enumerator.Current != null)
                 {
                     var item = enumerator.Current;
-                    item.Body as Seat;
+                    var msg = item.Body as Seat;
+
                 }
 
             }
