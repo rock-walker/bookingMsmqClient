@@ -1,5 +1,4 @@
-﻿using System.ComponentModel;
-using System.Windows.Shapes;
+﻿using System.Drawing;
 using System.Xml.Serialization;
 
 namespace BookingMsmqClient.Models
