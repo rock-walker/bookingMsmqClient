@@ -9,6 +9,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Shapes;
 using BookingMsmqClient.Models;
+using System.Data.SqlClient;
 
 namespace BookingMsmqClient
 {
@@ -20,7 +21,9 @@ namespace BookingMsmqClient
         private Seat[,] _room = new Seat[30,40];
         private readonly string _queueName = ".\\Private$\\SeatsRoom";
         private List<LabelIdMapping> _seats = new List<LabelIdMapping>();
-        private List<Seat> _selectedSeats = new List<Seat>(); 
+        private List<Seat> _selectedSeats = new List<Seat>();
+
+        private string connectionString = "Data Source=.\\sql2012; Initial Catalog=Cinema; Integrated Security=SSPI";
 
         public MainWindow()
         {
@@ -51,7 +54,9 @@ namespace BookingMsmqClient
                     var enumerable = x.Result;
                     var seats = enumerable as IList<LabelIdMapping> ?? enumerable.ToList();
 
-                    if (seats.Count == 0)
+                    var dbTickets = GetSqlTickets();
+
+                    if (seats.Count == 0 && dbTickets.Count == 0)
                     {
                         UI_InitSeats();
                         return;
@@ -78,6 +83,27 @@ namespace BookingMsmqClient
                 }, TaskScheduler.FromCurrentSynchronizationContext());
         }
 
+        private List<Seat> GetSqlTickets()
+        {
+            using (var sql = new SqlConnection(connectionString))
+            {
+                var queryString = "SELECT * from Ticket";
+                var command = new SqlCommand(queryString, sql);
+                sql.Open();
+
+                var reader = command.ExecuteReader();
+                while (reader.Read())
+                {
+                    var guid = reader[1];
+                    var row = reader[2];
+                    var number = reader[3];
+                }
+                reader.Close();
+            }
+
+            return new List<Seat>();
+        }
+
         private void UI_InitSeats()
         {
             for (var i = 0; i < 30; i++)
@@ -101,7 +127,7 @@ namespace BookingMsmqClient
         {
             using (var msgEnumerator = queue.GetMessageEnumerator2())
             {
-                while (msgEnumerator.MoveNext(TimeSpan.FromSeconds(1)) && msgEnumerator.Current != null)
+                while (msgEnumerator.MoveNext(TimeSpan.FromMilliseconds(100)) && msgEnumerator.Current != null)
                 {
                     var labelId = new LabelIdMapping
                     {
@@ -112,6 +138,7 @@ namespace BookingMsmqClient
                     Dispatcher.Invoke(new Action<LabelIdMapping>(AddSeatToRoom), labelId);
                 }
             }
+
             return _seats;
         }
 
