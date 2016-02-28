@@ -23,6 +23,7 @@ namespace BookingMsmqClient
         private readonly string _queueName = ".\\Private$\\SeatsRoom";
         private List<LabelIdMapping> _seats = new List<LabelIdMapping>();
         private List<Seat> _selectedSeats = new List<Seat>();
+        private List<Seat> _seatsCancelledByClient = new List<Seat>(); 
 
         private string connectionString = "Data Source=.\\sql2012; Initial Catalog=Cinema; Integrated Security=SSPI";
 
@@ -89,6 +90,7 @@ namespace BookingMsmqClient
             while (true)
             {
                 var seats = GetSqlTickets();
+                var seatsCancelledByAdmin = new List<Seat>();
 
                 foreach (var seat in seats)
                 {
@@ -100,6 +102,10 @@ namespace BookingMsmqClient
                         continue;
 
                     ticket.BookingState = seat.BookingState;
+                    if (seat.BookingState == BookingState.Cancelled)
+                    {
+                        seatsCancelledByAdmin.Add(seat);
+                    }
 
                     Dispatcher.Invoke(() =>
                     {
@@ -108,7 +114,40 @@ namespace BookingMsmqClient
 
                 }
 
+                foreach (var cancelledSeat in _seatsCancelledByClient)
+                {
+                    if (!seats.Contains(cancelledSeat))
+                    {
+                        var ticket = _room[cancelledSeat.Row, cancelledSeat.Number];
+                        ticket.BookingState = BookingState.Free;
+
+                        Dispatcher.Invoke(() =>
+                        {
+                            ticket.ViewModel.Fill = UpdateState(ticket.BookingState);
+                        });
+                    }
+                }
+                _seatsCancelledByClient.Clear();
+
                 Thread.Sleep(5000);
+
+                foreach (var cancelledSeat in seatsCancelledByAdmin)
+                {
+                    var queue = new MessageQueue(_queueName);
+                    if (seats.Contains(cancelledSeat))
+                    {
+                        var ticket = _room[cancelledSeat.Row, cancelledSeat.Number];
+                        ticket.BookingState = BookingState.Free;
+                        queue.Send(cancelledSeat);
+
+                        Dispatcher.Invoke(() =>
+                        {
+                            ticket.ViewModel.Fill = UpdateState(ticket.BookingState);
+                        });
+                    }
+                }
+
+                seatsCancelledByAdmin.Clear();
             }
         }
 
@@ -198,21 +237,7 @@ namespace BookingMsmqClient
                 StrokeThickness = 0.1
             };
 
-            var actualColor = new SolidColorBrush(Colors.White);
-            switch (state)
-            {
-                case BookingState.Reserved:
-                    actualColor.Color = Colors.DarkRed;
-                    break;
-                case BookingState.AwaitingApproval:
-                    actualColor.Color = Colors.DeepPink;
-                    break;
-                default:
-                    actualColor.Color = Colors.White;
-                    break;
-            }
-
-            rect.Fill = actualColor;
+            rect.Fill = UpdateState(state);
             rect.MouseDown += DetectSeat;
 
             return rect;
@@ -225,11 +250,27 @@ namespace BookingMsmqClient
             var number = index % 40;
             var row = index / 40;
 
+            var checkedRoom = _room[row, number];
+
+            if (checkedRoom.BookingState == BookingState.Reserved)
+            {
+                if (MessageBox.Show("Do you want to cancel reservation?", "Cancellation", MessageBoxButton.OKCancel) ==
+                    MessageBoxResult.OK)
+                {
+                    var queue = new MessageQueue(_queueName);
+                    queue.Send(checkedRoom);
+
+                    checkedRoom.BookingState = BookingState.Cancelled;
+                    checkedRoom.ViewModel.Fill = UpdateState(checkedRoom.BookingState);
+
+                    _seatsCancelledByClient.Add(checkedRoom);
+                }
+                return;
+            }
+
             MessageBox.Show($"Place [r {row}, s {number}] is reserved" + Environment.NewLine + "Submit personal data");
 
-            var checkedRoom = _room[row, number];
-            if (checkedRoom.BookingState != BookingState.AwaitingApproval &&
-                checkedRoom.BookingState != BookingState.Reserved)
+            if (checkedRoom.BookingState == BookingState.Free)
             {
                 checkedRoom.Number = number;
                 checkedRoom.Row = row;
@@ -250,6 +291,9 @@ namespace BookingMsmqClient
                     break;
                 case BookingState.AwaitingApproval:
                     actualColor.Color = Colors.DeepPink;
+                    break;
+                case BookingState.Cancelled:
+                    actualColor.Color = Colors.Yellow;
                     break;
                 default:
                     actualColor.Color = Colors.White;

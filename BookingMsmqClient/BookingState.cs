@@ -12,5 +12,6 @@ namespace BookingMsmqClient
         Free,
         AwaitingApproval,
         Reserved,
+        Cancelled
     }
 }
