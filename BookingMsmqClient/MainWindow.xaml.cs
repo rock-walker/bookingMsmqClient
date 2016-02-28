@@ -10,6 +10,7 @@ using System.Windows.Media;
 using System.Windows.Shapes;
 using BookingMsmqClient.Models;
 using System.Data.SqlClient;
+using System.Threading;
 
 namespace BookingMsmqClient
 {
@@ -28,10 +29,8 @@ namespace BookingMsmqClient
         public MainWindow()
         {
             InitializeComponent();
-
-            //UI_InitSeats();
-
             BL_InitSeats();
+            Task.Factory.StartNew(RefreshSeats, TaskCreationOptions.AttachedToParent);
         }
 
         private void BL_InitSeats()
@@ -69,7 +68,9 @@ namespace BookingMsmqClient
                     {
                         for (var j = 0; j < 40; j++)
                         {
-                            var bookedSeat = messages.FirstOrDefault(n => n.Number == j && n.Row == i) ?? new Seat();
+                            var bookedSeat = messages.FirstOrDefault(n => n.Number == j && n.Row == i)
+                                            ?? dbTickets.FirstOrDefault(n => n.Number == j && n.Row == i)
+                                            ?? new Seat();
 
                             //TODO: change to dynamic BookingState
                             bookedSeat.ViewModel = DrawSeat(bookedSeat.BookingState);
@@ -83,8 +84,37 @@ namespace BookingMsmqClient
                 }, TaskScheduler.FromCurrentSynchronizationContext());
         }
 
+        private void RefreshSeats()
+        {
+            while (true)
+            {
+                var seats = GetSqlTickets();
+
+                foreach (var seat in seats)
+                {
+                    var ticket = _room[seat.Row, seat.Number];
+                    if (ticket == null)
+                        continue;
+
+                    if (ticket.BookingState == seat.BookingState)
+                        continue;
+
+                    ticket.BookingState = seat.BookingState;
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        ticket.ViewModel.Fill = UpdateState(seat.BookingState);
+                    });
+
+                }
+
+                Thread.Sleep(5000);
+            }
+        }
+
         private List<Seat> GetSqlTickets()
         {
+            var seats = new List<Seat>();
             using (var sql = new SqlConnection(connectionString))
             {
                 var queryString = "SELECT * from Ticket";
@@ -95,13 +125,21 @@ namespace BookingMsmqClient
                 while (reader.Read())
                 {
                     var guid = reader[1];
-                    var row = reader[2];
-                    var number = reader[3];
+                    var row = (int)reader[2];
+                    var number = (int)reader[3];
+                    var state = (BookingState)reader[4];
+
+                    seats.Add(new Seat
+                    {
+                        Row = row,
+                        Number = number,
+                        BookingState = state
+                    });
                 }
                 reader.Close();
             }
 
-            return new List<Seat>();
+            return seats;
         }
 
         private void UI_InitSeats()
@@ -248,6 +286,8 @@ namespace BookingMsmqClient
                 };
                 queue.Send(seat);
             }
+
+            MessageBox.Show("Wait for approval");
 
             _selectedSeats.Clear();
         }

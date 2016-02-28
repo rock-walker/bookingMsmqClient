@@ -1,8 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Messaging;
 using BookingMsmqClient.Models;
 using System.Data.SqlClient;
+using System.Threading;
 
 namespace BookingMsmqClient
 {
@@ -13,7 +13,13 @@ namespace BookingMsmqClient
 
         static void Main(string[] args)
         {
-            ReadQueue();
+            while (true)
+            {
+                Console.WriteLine("Reading message...");
+                ReadQueue();
+                Console.WriteLine("Queue is busy");
+                Thread.Sleep(5000);
+            }
         }
 
         private static void ReadQueue()
@@ -21,14 +27,19 @@ namespace BookingMsmqClient
             using (var queue = new MessageQueue(_queueName))
             {
                 queue.Formatter = new XmlMessageFormatter(new[] { typeof(Seat) });
-                var enumerator = queue.GetMessageEnumerator2();
 
-                while (enumerator.MoveNext(TimeSpan.FromMilliseconds(10000)) && enumerator.Current != null)
+                try
                 {
-                    var item = enumerator.Current;
-                    var msg = item.Body as Seat;
+                    var msg = queue.Receive(TimeSpan.FromSeconds(5));
+                    var seat = msg.Body as Seat;
 
-                    UpdateDb(msg, item.Id);
+                    Console.WriteLine($"Received message: Number->{seat.Number}, Row->{seat.Row}");
+
+                    UpdateDb(seat, msg.Id);
+                }
+                catch (MessageQueueException ex)
+                {
+                    Console.WriteLine("No messages in queue");
                 }
             }
         }
@@ -40,11 +51,13 @@ namespace BookingMsmqClient
             {
                 var state = BookingState.Reserved;
 
-                var query = string.Format("INSERT INTO Ticket ([UniqueNumber], [Row], [Number], [BookingState]) VALUES (\'{0}\', {1}, {2}, {3})", id, seat.Row, seat.Number, (int)state);
+                var query =
+                    $"INSERT INTO Ticket ([UniqueNumber], [Row], [Number], [BookingState]) VALUES (\'{id}\', {seat.Row}, {seat.Number}, {(int) state})";
                 var command = new SqlCommand(query, connection);
                 connection.Open();
 
                 command.ExecuteScalar();
+                connection.Close();
             }
         }
     }
