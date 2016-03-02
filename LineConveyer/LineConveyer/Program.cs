@@ -42,9 +42,9 @@ namespace BookingMsmqClient
                     }
                     else
                     {
-                        Console.WriteLine("Approve this ticket? Press Y/N");
+                        //Console.WriteLine("Approve this ticket? Press Y/N");
 
-                        var key = Console.ReadKey();
+                        var key = new ConsoleKeyInfo('y', ConsoleKey.Y, false, false, false);//Console.ReadKey();
                         seat.BookingState = (key.KeyChar == 'y') ? BookingState.Reserved : BookingState.Cancelled;
                         Console.WriteLine();
                     }

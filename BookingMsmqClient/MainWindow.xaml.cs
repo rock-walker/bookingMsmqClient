@@ -26,9 +26,12 @@ namespace BookingMsmqClient
         private List<Seat> _seatsCancelledByClient = new List<Seat>(); 
 
         private string connectionString = "Data Source=.\\sql2012; Initial Catalog=Cinema; Integrated Security=SSPI";
+        private MessageQueue _queue;
 
         public MainWindow()
         {
+            _queue = new MessageQueue(_queueName);
+            _queue.Formatter = new XmlMessageFormatter(new [] {typeof(Seat)});
             InitializeComponent();
             BL_InitSeats();
             Task.Factory.StartNew(RefreshSeats, TaskCreationOptions.AttachedToParent);
@@ -89,6 +92,8 @@ namespace BookingMsmqClient
         {
             while (true)
             {
+                
+
                 var seats = GetSqlTickets();
                 var seatsCancelledByAdmin = new List<Seat>();
 
@@ -114,6 +119,45 @@ namespace BookingMsmqClient
 
                 }
 
+                var queue1 = new MessageQueue(_queueName) { Formatter = new XmlMessageFormatter(new[] { typeof(Seat) }) };
+
+                var messages = PeekMessages(queue1);
+                //var pendingApprovalMsgs = messages.Where(labelIdMapping => queue1.Peek(TimeSpan.FromMilliseconds(1)) != null)
+                //    .Select(x => (x.Body) as Seat).ToList();
+
+                foreach (var message in messages)
+                {
+                    Seat msg = null;
+                    try
+                    {
+                        msg = queue1.PeekById(message.Id).Body as Seat;
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        _seats = new List<LabelIdMapping>();
+                        continue;
+                    }
+                    
+
+                    var ticket = _room[msg.Row, msg.Number];
+                    if (ticket == null)
+                        continue;
+
+                    if (ticket.BookingState == msg.BookingState)
+                        continue;
+
+                    ticket.BookingState = msg.BookingState;
+                    if (msg.BookingState == BookingState.Cancelled)
+                    {
+                        seatsCancelledByAdmin.Add(msg);
+                    }
+
+                    Dispatcher.Invoke(() =>
+                    {
+                        ticket.ViewModel.Fill = UpdateState(msg.BookingState);
+                    });
+                }
+
                 foreach (var cancelledSeat in _seatsCancelledByClient)
                 {
                     if (!seats.Contains(cancelledSeat))
@@ -129,7 +173,7 @@ namespace BookingMsmqClient
                 }
                 _seatsCancelledByClient.Clear();
 
-                Thread.Sleep(5000);
+                Thread.Sleep(1000);
 
                 foreach (var cancelledSeat in seatsCancelledByAdmin)
                 {
@@ -202,10 +246,13 @@ namespace BookingMsmqClient
 
         private IEnumerable<LabelIdMapping> PeekMessages(MessageQueue queue)
         {
+            var counter = 0;
+
             using (var msgEnumerator = queue.GetMessageEnumerator2())
             {
-                while (msgEnumerator.MoveNext(TimeSpan.FromMilliseconds(100)) && msgEnumerator.Current != null)
+                while (msgEnumerator.MoveNext(TimeSpan.FromMilliseconds(10)) && msgEnumerator.Current != null)
                 {
+                    counter++;
                     var labelId = new LabelIdMapping
                     {
                         Id = msgEnumerator.Current.Id,
@@ -216,12 +263,13 @@ namespace BookingMsmqClient
                 }
             }
 
-            return _seats;
+            return (counter > 0) ? _seats : new List<LabelIdMapping>();
         }
 
         private void AddSeatToRoom(LabelIdMapping labelIdMapping)
         {
-            _seats.Add(labelIdMapping);
+            if (_seats.All(x => x.Id != labelIdMapping.Id))
+                _seats.Add(labelIdMapping);
         }
 
         private Rectangle DrawSeat(BookingState state)
@@ -268,7 +316,7 @@ namespace BookingMsmqClient
                 return;
             }
 
-            MessageBox.Show($"Place [r {row}, s {number}] is reserved" + Environment.NewLine + "Submit personal data");
+            //MessageBox.Show($"Place [r {row}, s {number}] is reserved" + Environment.NewLine + "Submit personal data");
 
             if (checkedRoom.BookingState == BookingState.Free)
             {
@@ -278,6 +326,9 @@ namespace BookingMsmqClient
 
                 checkedRoom.BookingState = BookingState.AwaitingApproval;
                 checkedRoom.ViewModel.Fill = UpdateState(checkedRoom.BookingState);
+
+                var queue = new MessageQueue(_queueName);
+                queue.Send(checkedRoom);
             }
         }
 
